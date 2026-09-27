@@ -1,4 +1,5 @@
 import java.awt.BasicStroke;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -8,6 +9,7 @@ import java.awt.RenderingHints;
 import java.awt.geom.Line2D;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -31,12 +33,31 @@ public class clock {
 		private static final Color FACE = new Color(23, 32, 52);
 		private static final Color MUTED = new Color(151, 166, 190);
 		private static final Color ACCENT = new Color(72, 220, 190);
-		private static final DateTimeFormatter DIGITAL_TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
+		private static final DateTimeFormatter DIGITAL_TIME = DateTimeFormatter.ofPattern("hh:mm:ss a");
 		private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
+		private final Timer timer;
+
 
 		WatchPanel() {
 			setBackground(BACKGROUND);
-			new Timer(50, event -> repaint()).start();
+			setLayout(new BorderLayout());
+			timer = new Timer(50, event -> repaint());
+			timer.start();
+
+			JPanel controls = new JPanel();
+			controls.setBackground(BACKGROUND);
+			JButton stopButton = new JButton("Stop");
+			stopButton.addActionListener(event -> {
+				if (timer.isRunning()) {
+					timer.stop();
+					stopButton.setText("Resume");
+				} else {
+					timer.start();
+					stopButton.setText("Stop");
+				}
+			});
+			controls.add(stopButton);
+			add(controls, BorderLayout.SOUTH);
 		}
 
 		@Override
@@ -47,12 +68,13 @@ public class clock {
 
 			int width = getWidth();
 			int height = getHeight();
+			int displayHeight = height - 48;
 			int centerX = (int) (width * 0.30);
-			int centerY = height / 2;
-			int radius = Math.min((int) (width * 0.235), (int) (height * 0.39));
+			int centerY = displayHeight / 2;
+			int radius = Math.min((int) (width * 0.235), (int) (displayHeight * 0.39));
 
 			drawAnalogClock(g, centerX, centerY, radius);
-			drawDigitalClock(g, width, height);
+			drawDigitalClock(g, width, displayHeight);
 			g.dispose();
 		}
 
