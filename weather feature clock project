@@ -1,0 +1,326 @@
+// Source code is decompiled from a .class file using FernFlower decompiler (from Intellij IDEA).
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.geom.Line2D;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.Timer;
+
+public class clock {
+   public clock() {
+   }
+
+   public static void main(String[] var0) {
+      SwingUtilities.invokeLater(() -> {
+         JFrame var0 = new JFrame("Digital + Analog Watch");
+         var0.setDefaultCloseOperation(3);
+         var0.setContentPane(new WatchPanel());
+         var0.setSize(900, 560);
+         var0.setMinimumSize(new Dimension(700, 460));
+         var0.setLocationRelativeTo((Component)null);
+         var0.setVisible(true);
+      });
+   }
+
+   private static class WatchPanel extends JPanel {
+      private static final Color BACKGROUND = new Color(13, 19, 34);
+      private static final Color FACE = new Color(23, 32, 52);
+      private static final Color MUTED = new Color(151, 166, 190);
+      private static final Color ACCENT = new Color(72, 220, 190);
+      private static final DateTimeFormatter DIGITAL_TIME = DateTimeFormatter.ofPattern("hh:mm:ss a");
+      private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
+      private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8L)).build();
+      private final Timer timer;
+      private String weatherLocation = "CURRENT WEATHER";
+      private String weatherSummary = "Enter a city above to check.";
+      private String weatherDetails = "";
+      private String weatherExtra = "";
+
+      WatchPanel() {
+         this.setBackground(BACKGROUND);
+         this.setLayout(new BorderLayout());
+         this.timer = new Timer(50, (var1x) -> this.repaint());
+         this.timer.start();
+         JPanel var1 = new JPanel(new FlowLayout(1, 8, 7));
+         var1.setBackground(BACKGROUND);
+         JTextField var2 = new JTextField(18);
+         var2.setToolTipText("Enter a city to get its current weather");
+         JButton var3 = new JButton("Check weather");
+         var3.addActionListener((var3x) -> this.loadWeather(var2.getText(), var3));
+         var2.addActionListener((var3x) -> this.loadWeather(var2.getText(), var3));
+         var1.add(var2);
+         var1.add(var3);
+         this.add(var1, "North");
+         JPanel var4 = new JPanel();
+         var4.setBackground(BACKGROUND);
+         JButton var5 = new JButton("Stop");
+         var5.addActionListener((var2x) -> {
+            if (this.timer.isRunning()) {
+               this.timer.stop();
+               var5.setText("Resume");
+            } else {
+               this.timer.start();
+               var5.setText("Stop");
+            }
+
+         });
+         var4.add(var5);
+         this.add(var4, "South");
+      }
+
+      protected void paintComponent(Graphics var1) {
+         super.paintComponent(var1);
+         Graphics2D var2 = (Graphics2D)var1.create();
+         var2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+         int var3 = this.getWidth();
+         int var4 = this.getHeight();
+         int var5 = var4 - 88;
+         int var6 = (int)((double)var3 * 0.3);
+         int var7 = var5 / 2;
+         int var8 = Math.min((int)((double)var3 * 0.235), (int)((double)var5 * 0.39));
+         this.drawAnalogClock(var2, var6, var7, var8);
+         this.drawDigitalClock(var2, var3, var5);
+         var2.dispose();
+      }
+
+      private void drawAnalogClock(Graphics2D var1, int var2, int var3, int var4) {
+         var1.setColor(new Color(0, 0, 0, 65));
+         var1.fillOval(var2 - var4 - 4, var3 - var4 + 8, var4 * 2 + 8, var4 * 2 + 8);
+         var1.setColor(ACCENT);
+         var1.setStroke(new BasicStroke(3.0F));
+         var1.drawOval(var2 - var4, var3 - var4, var4 * 2, var4 * 2);
+         var1.setColor(FACE);
+         var1.fillOval(var2 - var4 + 5, var3 - var4 + 5, (var4 - 5) * 2, (var4 - 5) * 2);
+
+         for(int var5 = 0; var5 < 60; ++var5) {
+            double var6 = Math.toRadians((double)(var5 * 6 - 90));
+            boolean var8 = var5 % 5 == 0;
+            int var9 = var4 - (var8 ? 22 : 12);
+            int var10 = var4 - 8;
+            var1.setColor(var8 ? Color.WHITE : new Color(112, 132, 160));
+            var1.setStroke(new BasicStroke(var8 ? 3.0F : 1.3F, 1, 1));
+            var1.draw(new Line2D.Double((double)var2 + Math.cos(var6) * (double)var9, (double)var3 + Math.sin(var6) * (double)var9, (double)var2 + Math.cos(var6) * (double)var10, (double)var3 + Math.sin(var6) * (double)var10));
+         }
+
+         var1.setFont(new Font("SansSerif", 1, Math.max(13, var4 / 9)));
+         var1.setColor(new Color(224, 233, 246));
+         FontMetrics var13 = var1.getFontMetrics();
+
+         for(int var14 = 1; var14 <= 12; ++var14) {
+            double var7 = Math.toRadians((double)(var14 * 30 - 90));
+            String var17 = Integer.toString(var14);
+            int var19 = (int)((double)var2 + Math.cos(var7) * (double)var4 * 0.72 - (double)var13.stringWidth(var17) / (double)2.0F);
+            int var11 = (int)((double)var3 + Math.sin(var7) * (double)var4 * 0.72 + (double)var13.getAscent() / (double)3.0F);
+            var1.drawString(var17, var19, var11);
+         }
+
+         LocalDateTime var15 = LocalDateTime.now();
+         double var16 = (double)var15.getSecond() + (double)var15.getNano() / (double)1.0E9F;
+         double var18 = (double)var15.getMinute() + var16 / (double)60.0F;
+         double var20 = (double)(var15.getHour() % 12) + var18 / (double)60.0F;
+         this.drawHand(var1, var2, var3, var20 * (double)30.0F - (double)90.0F, (double)var4 * 0.48, 6.0F, Color.WHITE);
+         this.drawHand(var1, var2, var3, var18 * (double)6.0F - (double)90.0F, (double)var4 * 0.68, 4.0F, ACCENT);
+         this.drawHand(var1, var2, var3, var16 * (double)6.0F - (double)90.0F, (double)var4 * 0.78, 1.7F, new Color(255, 115, 125));
+         var1.setColor(new Color(255, 115, 125));
+         var1.fillOval(var2 - 6, var3 - 6, 12, 12);
+      }
+
+      private void drawHand(Graphics2D var1, int var2, int var3, double var4, double var6, float var8, Color var9) {
+         double var10 = Math.toRadians(var4);
+         var1.setColor(var9);
+         var1.setStroke(new BasicStroke(var8, 1, 1));
+         var1.draw(new Line2D.Double((double)var2, (double)var3, (double)var2 + Math.cos(var10) * var6, (double)var3 + Math.sin(var10) * var6));
+      }
+
+      private void drawDigitalClock(Graphics2D var1, int var2, int var3) {
+         int var4 = (int)((double)var2 * 0.58);
+         int var5 = var3 / 2;
+         LocalDateTime var6 = LocalDateTime.now();
+         var1.setColor(MUTED);
+         var1.setFont(new Font("SansSerif", 1, 15));
+         var1.drawString("LOCAL TIME", var4, var5 - 70);
+         var1.setColor(Color.WHITE);
+         var1.setFont(new Font("Monospaced", 1, Math.max(38, Math.min(62, var2 / 13))));
+         var1.drawString(var6.format(DIGITAL_TIME), var4, var5 + 5);
+         var1.setColor(ACCENT);
+         var1.fillRoundRect(var4, var5 + 30, 56, 4, 4, 4);
+         var1.setColor(MUTED);
+         var1.setFont(new Font("SansSerif", 0, 16));
+         var1.drawString(var6.format(DATE), var4, var5 + 70);
+         var1.setColor(ACCENT);
+         var1.setFont(new Font("SansSerif", 1, 15));
+         var1.drawString(this.weatherLocation, var4, var5 + 104);
+         var1.setColor(Color.WHITE);
+         var1.setFont(new Font("SansSerif", 0, 16));
+         var1.drawString(this.weatherSummary, var4, var5 + 130);
+         var1.setColor(MUTED);
+         var1.setFont(new Font("SansSerif", 0, 14));
+         var1.drawString(this.weatherDetails, var4, var5 + 154);
+         var1.drawString(this.weatherExtra, var4, var5 + 176);
+      }
+
+      private void loadWeather(String var1, final JButton var2) {
+         final String var3 = var1.trim();
+         if (var3.isEmpty()) {
+            this.weatherLocation = "CURRENT WEATHER";
+            this.weatherSummary = "Enter a city above to check.";
+            this.weatherDetails = "";
+            this.weatherExtra = "";
+            this.repaint();
+         } else {
+            this.weatherLocation = "WEATHER FOR " + var3.toUpperCase(Locale.ROOT);
+            this.weatherSummary = "Loading current conditions...";
+            this.weatherDetails = "";
+            this.weatherExtra = "";
+            var2.setEnabled(false);
+            this.repaint();
+            (new SwingWorker<WeatherData, Void>() {
+               protected WeatherData doInBackground() throws Exception {
+                  return clock.WatchPanel.fetchWeather(var3);
+               }
+
+               protected void done() {
+                  try {
+                     WeatherData var1 = (WeatherData)this.get();
+                     WatchPanel.this.weatherLocation = var1.location;
+                     WatchPanel.this.weatherSummary = String.format(Locale.ROOT, "%.1f C  |  %s", var1.temperature, var1.condition);
+                     WatchPanel.this.weatherDetails = String.format(Locale.ROOT, "Feels like %.1f C  |  Humidity %.0f%%", var1.feelsLike, var1.humidity);
+                     WatchPanel.this.weatherExtra = String.format(Locale.ROOT, "Wind %.1f km/h", var1.windSpeed);
+                  } catch (InterruptedException var7) {
+                     Thread.currentThread().interrupt();
+                     WatchPanel.this.weatherSummary = "Weather lookup was interrupted.";
+                  } catch (ExecutionException var8) {
+                     String var2x = var8.getCause().getMessage();
+                     WatchPanel.this.weatherSummary = var2x == null ? "Weather lookup failed." : var2x;
+                  } finally {
+                     var2.setEnabled(true);
+                     WatchPanel.this.repaint();
+                  }
+
+               }
+            }).execute();
+         }
+      }
+
+      private static WeatherData fetchWeather(String var0) throws IOException, InterruptedException {
+         String var1 = URLEncoder.encode(var0, StandardCharsets.UTF_8);
+         String var2 = "https://geocoding-api.open-meteo.com/v1/search?name=" + var1 + "&count=1&language=en&format=json";
+         String var3 = fetchJson(var2);
+         Double var4 = findNumber(var3, "latitude");
+         Double var5 = findNumber(var3, "longitude");
+         String var6 = findString(var3, "name");
+         if (var4 != null && var5 != null && var6 != null) {
+            String var7 = findString(var3, "country");
+            String var8 = var7 == null ? var6 : var6 + ", " + var7;
+            String var9 = "https://api.open-meteo.com/v1/forecast?latitude=" + var4 + "&longitude=" + var5 + "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&temperature_unit=celsius&wind_speed_unit=kmh&timezone=auto";
+            String var10 = fetchJson(var9);
+            return new WeatherData(var8, requireNumber(var10, "temperature_2m"), requireNumber(var10, "apparent_temperature"), requireNumber(var10, "relative_humidity_2m"), requireNumber(var10, "wind_speed_10m"), conditionFor((int)requireNumber(var10, "weather_code")));
+         } else {
+            throw new IOException("City not found. Check the spelling and try again.");
+         }
+      }
+
+      private static String fetchJson(String var0) throws IOException, InterruptedException {
+         HttpRequest var1 = HttpRequest.newBuilder(URI.create(var0)).timeout(Duration.ofSeconds(12L)).header("Accept", "application/json").GET().build();
+         HttpResponse var2 = HTTP_CLIENT.send(var1, BodyHandlers.ofString());
+         if (var2.statusCode() >= 200 && var2.statusCode() < 300) {
+            return (String)var2.body();
+         } else {
+            throw new IOException("Weather service returned HTTP " + var2.statusCode() + ".");
+         }
+      }
+
+      private static Double findNumber(String var0, String var1) {
+         Matcher var2 = Pattern.compile("\\\"" + Pattern.quote(var1) + "\\\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)").matcher(var0);
+         return var2.find() ? Double.parseDouble(var2.group(1)) : null;
+      }
+
+      private static double requireNumber(String var0, String var1) throws IOException {
+         Double var2 = findNumber(var0, var1);
+         if (var2 == null) {
+            throw new IOException("Weather data was incomplete. Please try again.");
+         } else {
+            return var2;
+         }
+      }
+
+      private static String findString(String var0, String var1) {
+         Matcher var2 = Pattern.compile("\\\"" + Pattern.quote(var1) + "\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"").matcher(var0);
+         return var2.find() ? var2.group(1) : null;
+      }
+
+      private static String conditionFor(int var0) {
+         if (var0 == 0) {
+            return "Clear sky";
+         } else if (var0 == 1) {
+            return "Mainly clear";
+         } else if (var0 == 2) {
+            return "Partly cloudy";
+         } else if (var0 == 3) {
+            return "Overcast";
+         } else if (var0 != 45 && var0 != 48) {
+            if (var0 >= 51 && var0 <= 57) {
+               return "Drizzle";
+            } else if (var0 >= 61 && var0 <= 67) {
+               return "Rain";
+            } else if (var0 >= 71 && var0 <= 77) {
+               return "Snow";
+            } else if (var0 >= 80 && var0 <= 82) {
+               return "Rain showers";
+            } else if (var0 != 85 && var0 != 86) {
+               return var0 >= 95 ? "Thunderstorm" : "Current conditions";
+            } else {
+               return "Snow showers";
+            }
+         } else {
+            return "Fog";
+         }
+      }
+
+      private static class WeatherData {
+         private final String location;
+         private final double temperature;
+         private final double feelsLike;
+         private final double humidity;
+         private final double windSpeed;
+         private final String condition;
+
+         private WeatherData(String var1, double var2, double var4, double var6, double var8, String var10) {
+            this.location = var1;
+            this.temperature = var2;
+            this.feelsLike = var4;
+            this.humidity = var6;
+            this.windSpeed = var8;
+            this.condition = var10;
+         }
+      }
+   }
+}
